@@ -42,37 +42,82 @@ def main():
 		requests.append(p)
 
 	ready = []
+	queue = deque()
+	running_process = None
+	context_counter = 5
 	
 	time = 1
-	
-	running_process = None
-	running_delay = 0
-	context_counter = 0
-
 	while(time<35):
-		if(context_counter == True):
+		# Checks if Context Shift is occurring
+		if(context_counter == 0):
 			print("C")
 			context_counter += 1
+			time += 1
 			continue
+
+		context_counter += 1
 
 		if(running_process):
 			print(running_process.get_number())
 		else:
 			print("-")
 	
-		for req in processes:
+		# Checks if any requests have become ready
+		for req in requests:
 			if(req.get_arrival_time() == time):
 				requests.remove(req)
 				ready.append(req)
 
+		
 		if(ready):
-			ready.sort(key=lambda p: p.priority, reverse=False)
+			# Creates a copy of the ready list and sorts it by priority (maintains queue order at original Ready list)
+			sorted_ready = list(ready)
+			sorted_ready.sort(key=lambda p: p.priority, reverse=False)
 			
+			# Assigns a process to be run if processor is idle
 			if(not(running_process)):
-				running_process = ready[0]
-			if(ready[0].get_priority() < running_process.get_priority()):
-				running_process = ready[0]
-				context_counter = True
+				running_process = sorted_ready[0]
+				ready.remove(running_process)
+				context_counter == 1
+			
+			# Swaps processes if there is a process with higher priority than current process
+			elif(sorted_ready[0].get_priority() < running_process.get_priority()):
+				new_priority = sorted_ready[0].get_priority()
+				
+				ready.append(running_process)
+				for p in queue:
+					ready.append(queue.popleft())
+				
+				queue = deque()
+				for p in ready:
+					if(p.get_priority() == new_priority):
+						queue.append(p)
+						ready.remove(p)
+
+				running_process = queue.popleft()
+				context_counter = 0
+
+			# If there are new processes with same priority as running process, adds them to queue
+			elif(sorted_ready[0].get_priority() == running_process.get_priority()):
+				for p in ready:
+					if(p.get_priority() == running_process.get_priority()):
+						queue.append(p)
+						ready.remove(p)
+						
+
+		if(context_counter == 4):
+			context_counter = 0
+			
+			if(queue):
+				queue.append(running_process)
+				running_process = queue.popleft()
+		
+#		for p in ready:
+#			print("CC: " + str(context_counter) + " Time: " + str(time) + " Ready: " + str(p.get_number()))
+
+#		for p in queue:
+#			print(str(time) + " Queue: " + str(p.get_number()))
+
 
 		time += 1
 	
