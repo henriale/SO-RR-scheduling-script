@@ -73,11 +73,10 @@ class Process:
         if self.response_time == 0:
             self.response_time = time - self.arrival_time
 
-    # Resets Quantum Counter
     def reset_quantum_counter(self):
         self.quantum_counter = 0
 
-    # Finishes Process and calculates requested data
+    # calculates requested data
     def finish(self, time):
         self.completion_time = time + 1
         self.turn_around_time = self.completion_time - self.arrival_time

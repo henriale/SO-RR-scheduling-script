@@ -2,48 +2,20 @@ from time import sleep
 from collections import deque
 import process
 
-# Toggles if Data File will be printed before running algorithm
-_PRINT_DATA_FIRST_ = True
-
 
 def main():
-    print('''
--------------------------------------------------------------
--------------------------------------------------------------
---- Pontificia Universidade Catolica do Rio Grande do Sul ---
---- Escola Politécnica ---
---- Disciplina de Sistemas Operacionais ---
---- Prof. Avelino Zorzo ---
------------------------------------------------
---- ALGORITMO DE ESCALONAMENTO DE PROCESSOS ---
------------------------------------------------
---- Alexandre Araujo (Ciência da Computação) ---
---- Gabriel F. Kurtz (Engenharia de Software) ---
--------------------------------------------------
--------------------------------------------------
-''')
-
     [time_quantum, processes_count, context_shift_size, processes] = process.Reader('input.txt').read()
 
-    # Context Shift Size
-    context_shift_size = 1
-
-    if (_PRINT_DATA_FIRST_):
-        print("Time Quantum: %d" % time_quantum)
-        print("Context shift: %d" % context_shift_size)
-        print("  P   AT   BT   Pri ")
-
+    # todo: use proper queue instead
     requests = processes
-    for p in processes:
-        print("%d  %2d  %2d  %d" % (p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority()))
-        # requests.append(p)
-
     # Keeps a copy of the original requests list (Will update Processes as they change)
     original_requests = list(requests)
     # Process being executed
     running_process = None
     # Ready Queue (Processes that are ready to execute)
+    # todo: use proper queue instead
     ready = []
+    # todo: use proper queue instead
     # High Priority Queue (Ready processes with same priority as Running Process)
     priority_queue = deque()
     # Handles Context Shift (Will bypass Context Shift when Processor is Idle similar to Moodle example)
@@ -53,10 +25,7 @@ def main():
     # Resulting String displaying Processes over Time
     result = ""
 
-    print("\n--- Starting Processes ---")
-
     # Will process one time unit as long as unfinished processes exist
-    # while(time<35):
     while requests or ready or priority_queue or running_process:
         # Checks if any requests have become ready
         set_remove = []
@@ -158,9 +127,7 @@ def main():
 
         time += 1
 
-    print("--- Finishing Processes ---")
     print("  P   AT   BT   Pri  CT  TAT   WT   RT ")
-
     for p in original_requests:
         print("%3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d" % (
             p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority(),
