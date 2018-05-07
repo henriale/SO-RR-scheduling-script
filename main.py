@@ -40,10 +40,10 @@ def main():
 	if(_PRINT_DATA_FIRST_):
 		print("Time Quantum: %d" % time_quantum)
 		print("Context shift: %d" % context_shift_size)
-		print("P  AT  BT  Priority")
+		print("  P   AT   BT   Pri ")
 	
 		for p in requests:
-			print("%d  %2d  %2d  %d" % (p.get_number(), p.get_arrival_time(), p.get_remaining_burst(), p.get_priority()))
+			print("%3d  %3d  %3d  %3d" % (p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority()))
 
 
 	# Keeps a copy of the original requests list (Will update Processes as they change)
@@ -54,7 +54,7 @@ def main():
 	ready = []
 	# High Priority Queue (Ready processes with same priority as Running Process)
 	priority_queue = deque()
-	# Handles Context Shift (Will bypass Context Shift when Processor is Idle similarly to Moodle example)
+	# Handles Context Shift (Will bypass Context Shift when Processor is Idle similar to Moodle example)
 	context_shift_counter = 1
 	# Current time
 	time = 1
@@ -64,7 +64,7 @@ def main():
 	print("\n--- Starting Processes ---")
 
 	# Will process one time unit as long as unfinished processes exist
-	# while(time<65):
+	# while(time<35):
 	while(requests or ready or priority_queue or running_process):
 		
 		#print("Request: " + str(requests[0].get_number()))
@@ -73,25 +73,30 @@ def main():
 		
 		#print(str(requests) + "\n" + str(ready) + "\n" + str(priority_queue) + "\n" + str(running_process))
 
-
-
+		
 		# Checks if any requests have become ready
+		set_remove = []
 		for req in requests:
+			print(str(req.get_number()) + " - Time: " + str(req.get_arrival_time()))
 			if(req.get_arrival_time() == time):
 				
 				if(running_process):
 					# Adds new process to High Priority queue if it has same priority as current process
 					if(req.get_priority() == running_process.get_priority()):
 						priority_queue.append(req)
-						requests.remove(req)
+						set_remove.append(req)
 					# Appends new process to Ready Queue if it has higher or lower priority (will be handled later)
 					else:
 						ready.append(req)
-						requests.remove(req)
+						set_remove.append(req)
 				# Appends new process to Ready Queue if there is no Running Process (will be handled later)
 				else:
 					ready.append(req)
-					requests.remove(req)
+					set_remove.append(req)
+
+		while(set_remove):
+			aux = set_remove.pop()
+			requests.remove(aux)
 
 		# Checks if Context Shift is occurring
 		if(context_shift_counter < context_shift_size):
@@ -176,6 +181,13 @@ def main():
 
 		time += 1
 	print("--- Finishing Processes ---")
+
+	print("  P   AT   BT   Pri  CT  TAT   WT   RT ")
+	
+	for p in original_requests:
+		print("%3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d" % (p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority(),
+										p.get_completion_time(), p.get_turn_around_time(), p.get_waiting_time(), p.get_response_time()))
+
 	print("\nProcessor Log:\n" + result)
 	
 	# Calculating required averages
@@ -218,7 +230,9 @@ class Process:
 		self.response_time = 0
 		# Waiting Time
 		self.waiting_time = 0
-
+		# Completion time
+		self.completion_time = 0
+		
 		
 	# Getters			
 	def get_number(self):
@@ -239,6 +253,8 @@ class Process:
 		return self.quantum_counter
 	def get_turn_around_time(self):
 		return self.turn_around_time
+	def get_completion_time(self):
+		return self.completion_time
 
 	# Executes Process for one time unit
 	def execute(self, time):
@@ -253,8 +269,10 @@ class Process:
 
 	# Finishes Process and calculates requested data
 	def finish(self, time):
-		self.turn_around_time = time - self.arrival_time
+		self.completion_time = time + 1
+		self.turn_around_time = self.completion_time - self.arrival_time
 		self.waiting_time = self.turn_around_time - self.burst_time
+
 
 		
 
