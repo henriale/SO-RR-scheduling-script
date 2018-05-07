@@ -1,6 +1,8 @@
 from time import sleep
 from collections import deque
 
+_PRINT_DATA_FIRST_ = True
+
 def main():
 	print(
 		'''
@@ -25,6 +27,7 @@ def main():
 	
 	# Reading input file and generating data structure
 	file = open("input.txt")
+	print("--- Importing Data ---")
 	processes_count = int(file.readline())
 	TQ = int(file.readline())
 	C = 1
@@ -32,24 +35,44 @@ def main():
 	processes = read_processes(file)
 	file.close()
 
-	print("Time Quantum (TQ): %d" % TQ)
-	print("Context shift (C): %d" % C)
-	print("P  AT  BT  Priority")
-	
 	requests = []
-	for p in processes:
-		print("%d  %2d  %2d  %d" % (p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority()))
-		requests.append(p)
 
+	if(_PRINT_DATA_FIRST_):
+		print("Time Quantum (TQ): %d" % TQ)
+		print("Context shift (C): %d" % C)
+		print("P  AT  BT  Priority")
+	
+		for p in processes:
+			print("%d  %2d  %2d  %d" % (p.get_number(), p.get_arrival_time(), p.get_remaining_burst(), p.get_priority()))
+			requests.append(p)
+
+	else:
+		for p in processes:
+			requests.append(p)
+
+	original_requests = list(requests)
 	ready = []
 	queue = deque()
 	running_process = None
 	context_shift = False
-	
 	time = 1
-	while(time<65):
 
-#		print("Starting Loop - CS: " + str(context_shift) + " Time: " + str(time))
+	print("\n--- Starting Processes ---")
+
+	# Will process one time unit as long as unfinished processes exist
+	while(requests or ready or queue or running_process):
+		
+		#print("Request: " + str(requests[0].get_number()))
+		
+		#print(str(requests) + "\n" + str(ready) + "\n" + str(queue) + "\n" + str(running_process))
+
+		#print("Starting Loop - CS: " + str(context_shift) + " Time: " + str(time))
+
+		# Checks if any requests have become ready
+		for req in requests:
+			if(req.get_arrival_time() == time):
+				requests.remove(req)
+				ready.append(req)
 
 		# Checks if Context Shift is occurring
 		if(context_shift == True):
@@ -58,38 +81,35 @@ def main():
 			time += 1
 			continue
 
+		# Handles Running Process
 		if(running_process):
-			running_process.execute()
+			running_process.execute(time)
 			print(running_process.get_number())
 
-			if(running_process.get_burst_time() == 0):
+			# Finishes process if it is done
+			if(running_process.get_remaining_burst() == 0):
+				running_process.finish(time)
+				context_shift = True
+			
 				if(queue):
 					running_process = queue.popleft()
-					context_shift = True
 				else:
 					running_process = None
-
-
-			elif(running_process.get_share_counter() == 3):
-				running_process.reset_share_counter()
+			
+			# Swaps process if Time Quantum is reached
+			elif(running_process.get_quantum_counter() == 3):
+				running_process.reset_quantum_counter()
 				context_shift = True
 			
 				if(queue):
 					queue.append(running_process)
 					running_process = queue.popleft()
 
-
+		# Handles idle processor
 		else:
 			print("-")
 
-			
-		# Checks if any requests have become ready
-		for req in requests:
-			if(req.get_arrival_time() == time):
-				requests.remove(req)
-				ready.append(req)
-
-		
+	
 		if(ready):
 			# Creates a copy of the ready list and sorts it by priority (maintains queue order at original Ready list)
 			sorted_ready = list(ready)
@@ -148,36 +168,52 @@ class Process:
 		self.arrival_time = AT
 		# Burst Time
 		self.burst_time = BT
+		# Burst Time remaining until process finishes
+		self.remaining_burst = BT
 		# Priority
 		self.priority = P
-		# Answer Time
-		self.answer_time = 0
+		# Number of Time Quantum fractions used by process (changes Context and resets at 3)
+		self.quantum_counter = 0
+		# Turn Around time
+		self.turn_around_time = 0
+		# Response Time
+		self.response_time = 0
 		# Waiting Time
 		self.waiting_time = 0
-		# Number of Time Share fractions used by process (changes Context and resets at 3)
-		self.share_counter = 0
-			
+
+		
+	# Getters			
 	def get_number(self):
 		return self.number
 	def get_arrival_time(self):
 		return self.arrival_time
 	def get_burst_time(self):
 		return self.burst_time
+	def get_remaining_burst(self):
+		return self.remaining_burst
 	def get_priority(self):
 		return self.priority
-	def get_answer_time(self):
-		return self.answer_time
+	def get_response_time(self):
+		return self.response_time
 	def get_waiting_time(self):
 		return self.waiting_time
-	def get_share_counter(self):
-		return self.share_counter
+	def get_quantum_counter(self):
+		return self.quantum_counter
 
-	def execute(self):
-		self.burst_time -= 1
-		self.share_counter += 1
+	def execute(self, time):
+		self.remaining_burst -= 1
+		self.quantum_counter += 1
+		if(self.response_time == 0):
+			self.response_time = time - self.arrival_time
 	
-	def reset_share_counter(self):
-		self.share_counter = 0
+	def reset_quantum_counter(self):
+		self.quantum_counter = 0
+
+	def finish(self, time):
+		self.turn_around_time = time - self.arrival_time
+		self.waiting_time = self.turn_around_time - self.burst_time
+
+		
 
 
 # Reads processes from file and returns them in a list of objects
