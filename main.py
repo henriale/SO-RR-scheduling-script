@@ -77,7 +77,6 @@ def main():
 		# Checks if any requests have become ready
 		set_remove = []
 		for req in requests:
-			print(str(req.get_number()) + " - Time: " + str(req.get_arrival_time()))
 			if(req.get_arrival_time() == time):
 				
 				if(running_process):
