@@ -182,18 +182,21 @@ def main():
 	n = 0
 	total_response_time = 0
 	total_waiting_time = 0
+	total_turn_around_time = 0
 
 	for p in original_requests:
 		total_response_time += p.get_response_time()
 		total_waiting_time += p.get_waiting_time()
+		total_turn_around_time += p.get_turn_around_time()
 		n += 1
 
 	average_response_time = total_response_time / n
 	average_waiting_time = total_waiting_time / n
+	average_turn_around_time = total_turn_around_time / n
 
 	print("\nAverage Response Time: " + str(average_response_time)
-		 +"\nAverage Waiting Time: " + str(average_waiting_time))
-
+		 +"\nAverage Waiting Time: " + str(average_waiting_time)
+		 +"\nAverage Turn Around Time: " + str(average_turn_around_time))
 
 class Process:
 	def __init__(self, PN, AT, BT, P):
@@ -234,6 +237,8 @@ class Process:
 		return self.waiting_time
 	def get_quantum_counter(self):
 		return self.quantum_counter
+	def get_turn_around_time(self):
+		return self.turn_around_time
 
 	# Executes Process for one time unit
 	def execute(self, time):
