@@ -64,24 +64,31 @@ def main():
 	print("\n--- Starting Processes ---")
 
 	# Will process one time unit as long as unfinished processes exist
+	# while(time<65):
 	while(requests or ready or priority_queue or running_process):
 		
 		#print("Request: " + str(requests[0].get_number()))
+
+		#print("\nStarting Loop - CS: " + str(context_shift_counter) + " Time: " + str(time))
 		
 		#print(str(requests) + "\n" + str(ready) + "\n" + str(priority_queue) + "\n" + str(running_process))
 
-		#print("Starting Loop - CS: " + str(context_shift_counter) + " Time: " + str(time))
+
 
 		# Checks if any requests have become ready
 		for req in requests:
-		
 			if(req.get_arrival_time() == time):
-				# Adds new process to High Priority queue if it has same priority as current process
+				
 				if(running_process):
+					# Adds new process to High Priority queue if it has same priority as current process
 					if(req.get_priority() == running_process.get_priority()):
 						priority_queue.append(req)
 						requests.remove(req)
-				# Appends new process to Ready Queue if it has higher or lower priority (will be handled later)
+					# Appends new process to Ready Queue if it has higher or lower priority (will be handled later)
+					else:
+						ready.append(req)
+						requests.remove(req)
+				# Appends new process to Ready Queue if there is no Running Process (will be handled later)
 				else:
 					ready.append(req)
 					requests.remove(req)
