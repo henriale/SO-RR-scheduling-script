@@ -74,9 +74,17 @@ def main():
 
 		# Checks if any requests have become ready
 		for req in requests:
+		
 			if(req.get_arrival_time() == time):
-				requests.remove(req)
-				ready.append(req)
+				# Adds new process to High Priority queue if it has same priority as current process
+				if(running_process):
+					if(req.get_priority() == running_process.get_priority()):
+						priority_queue.append(req)
+						requests.remove(req)
+				# Appends new process to Ready Queue if it has higher or lower priority (will be handled later)
+				else:
+					ready.append(req)
+					requests.remove(req)
 
 		# Checks if Context Shift is occurring
 		if(context_shift_counter < context_shift_size):
