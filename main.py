@@ -92,8 +92,7 @@ def main():
                     set_remove.append(req)
 
         while (set_remove):
-            aux = set_remove.pop()
-            requests.remove(aux)
+            requests.remove(set_remove.pop())
 
         # Checks if Context Shift is occurring
         if (context_shift_counter < context_shift_size):
@@ -140,7 +139,6 @@ def main():
             if (not (running_process)):
                 running_process = sorted_ready[0]
                 ready.remove(running_process)
-                context_shift_counter == 1
 
             # Swaps processes if there is a process with higher priority than current process, resets Context Shift
             elif (sorted_ready[0].get_priority() < running_process.get_priority()):
@@ -152,6 +150,7 @@ def main():
                     ready.append(priority_queue.popleft())
                 ready.append(running_process)
 
+                # todo: if 2 or more arrives, should not remove element during iteration
                 # Creates new High Priority Queue with new highest priority and assigns Running Process
                 priority_queue = deque()
                 for p in ready:
@@ -168,12 +167,6 @@ def main():
                     if (p.get_priority() == running_process.get_priority()):
                         priority_queue.append(p)
                         ready.remove(p)
-
-        #		for p in ready:
-        #			print("CS: " + str(context_shift_counter) + " Time: " + str(time) + " Ready: " + str(p.get_number()))
-
-        #		for p in priority_queue:
-        #			print(str(time) + " Queue: " + str(p.get_number()))
 
         time += 1
     print("--- Finishing Processes ---")
