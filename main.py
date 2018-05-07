@@ -1,197 +1,160 @@
 from time import sleep
 from collections import deque
+import process
+
 
 def main():
-	print(
-		'''
--------------------------------------------------------------		
--------------------------------------------------------------
---- Pontificia Universidade Catolica do Rio Grande do Sul ---
---- Escola Politécnica ---
---- Disciplina de Sistemas Operacionais ---
---- Prof. Avelino Zorzo ---
------------------------------------------------
---- ALGORITMO DE ESCALONAMENTO DE PROCESSOS ---
------------------------------------------------
---- Alexandre Araujo (Ciência da Computação) ---
---- Gabriel F. Kurtz (Engenharia de Software) ---
--------------------------------------------------
--------------------------------------------------
+    [time_quantum, processes_count, context_shift_size, processes] = process.Reader('input.txt').read()
 
-		''')
+    # todo: use proper queue instead
+    requests = processes
+    # Keeps a copy of the original requests list (Will update Processes as they change)
+    original_requests = list(requests)
+    # Process being executed
+    running_process = None
+    # Ready Queue (Processes that are ready to execute)
+    # todo: use proper queue instead
+    ready = []
+    # todo: use proper queue instead
+    # High Priority Queue (Ready processes with same priority as Running Process)
+    priority_queue = deque()
+    # Handles Context Shift (Will bypass Context Shift when Processor is Idle similar to Moodle example)
+    context_shift_counter = 1
+    # Current time
+    time = 1
+    # Resulting String displaying Processes over Time
+    result = ""
 
-	file = open("input.txt")
+    # Will process one time unit as long as unfinished processes exist
+    while requests or ready or priority_queue or running_process:
+        # Checks if any requests have become ready
+        set_remove = []
+        for req in requests:
+            if req.get_arrival_time() == time:
 
-	
-	# Reading input file and generating data structure
-	file = open("input.txt")
-	processes_count = int(file.readline())
-	TQ = int(file.readline())
-	C = 1
-	
-	processes = read_processes(file)
-	file.close()
+                if running_process:
+                    # Adds new process to High Priority queue if it has same priority as current process
+                    if req.get_priority() == running_process.get_priority():
+                        priority_queue.append(req)
+                        set_remove.append(req)
+                    # Appends new process to Ready Queue if it has higher or lower priority (will be handled later)
+                    else:
+                        ready.append(req)
+                        set_remove.append(req)
+                # Appends new process to Ready Queue if there is no Running Process (will be handled later)
+                else:
+                    ready.append(req)
+                    set_remove.append(req)
 
-	print("Time Quantum (TQ): %d" % TQ)
-	print("Context shift (C): %d" % C)
-	print("P  AT  BT  Priority")
-	
-	requests = []
-	for p in processes:
-		print("%d  %2d  %2d  %d" % (p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority()))
-		requests.append(p)
+        while set_remove:
+            requests.remove(set_remove.pop())
 
-	ready = []
-	queue = deque()
-	running_process = None
-	context_counter = 5
-	
-	time = 1
-	while(time<35):
-		# Checks if Context Shift is occurring
-		if(context_counter == 0):
-			print("C")
-			context_counter += 1
-			time += 1
-			continue
+        # Checks if Context Shift is occurring
+        if context_shift_counter < context_shift_size:
+            result += "C"
+            context_shift_counter += 1
+            time += 1
+            continue
 
-		context_counter += 1
+        # Handles Running Process
+        if running_process:
+            running_process.execute(time)
+            result += str(running_process.get_number())
 
-		if(running_process):
-			print(running_process.get_number())
-		else:
-			print("-")
-	
-		# Checks if any requests have become ready
-		for req in requests:
-			if(req.get_arrival_time() == time):
-				requests.remove(req)
-				ready.append(req)
+            # Finishes process if it is done
+            if running_process.get_remaining_burst() == 0:
+                running_process.finish(time)
+                context_shift_counter = 0
 
-		
-		if(ready):
-			# Creates a copy of the ready list and sorts it by priority (maintains queue order at original Ready list)
-			sorted_ready = list(ready)
-			sorted_ready.sort(key=lambda p: p.priority, reverse=False)
-			
-			# Assigns a process to be run if processor is idle
-			if(not(running_process)):
-				running_process = sorted_ready[0]
-				ready.remove(running_process)
-				context_counter == 1
-			
-			# Swaps processes if there is a process with higher priority than current process
-			elif(sorted_ready[0].get_priority() < running_process.get_priority()):
-				new_priority = sorted_ready[0].get_priority()
-				
-				ready.append(running_process)
-				for p in queue:
-					ready.append(queue.popleft())
-				
-				queue = deque()
-				for p in ready:
-					if(p.get_priority() == new_priority):
-						queue.append(p)
-						ready.remove(p)
+                if priority_queue:
+                    running_process = priority_queue.popleft()
+                else:
+                    running_process = None
 
-				running_process = queue.popleft()
-				context_counter = 0
+            # Swaps process if Time Quantum is reached
+            elif running_process.get_quantum_counter() == time_quantum:
+                running_process.reset_quantum_counter()
+                context_shift_counter = 0
 
-			# If there are new processes with same priority as running process, adds them to queue
-			elif(sorted_ready[0].get_priority() == running_process.get_priority()):
-				for p in ready:
-					if(p.get_priority() == running_process.get_priority()):
-						queue.append(p)
-						ready.remove(p)
-						
+                if priority_queue:
+                    priority_queue.append(running_process)
+                    running_process = priority_queue.popleft()
 
-		if(context_counter == 4):
-			context_counter = 0
-			
-			if(queue):
-				queue.append(running_process)
-				running_process = queue.popleft()
-		
-#		for p in ready:
-#			print("CC: " + str(context_counter) + " Time: " + str(time) + " Ready: " + str(p.get_number()))
+        # Handles idle processor
+        else:
+            result += "-"
 
-#		for p in queue:
-#			print(str(time) + " Queue: " + str(p.get_number()))
+        # Handles Ready Queue and High-Priority Queue
+        if ready:
+            # Creates a copy of the ready list and sorts it by priority (maintains queue order at original Ready list)
+            sorted_ready = list(ready)
+            sorted_ready.sort(key=lambda p: p.priority, reverse=False)
 
+            # Assigns a process to be run if processor is idle
+            # (Does not trigger Context Shift accordingly with Moodle Example)
+            if not running_process:
+                running_process = sorted_ready[0]
+                ready.remove(running_process)
 
-		time += 1
-	
+            # Swaps processes if there is a process with higher priority than current process, resets Context Shift
+            elif sorted_ready[0].get_priority() < running_process.get_priority():
+                new_priority = sorted_ready[0].get_priority()
 
+                # Returns Running Process and High Priority Queue to Ready Queue
+                # Will maintain High Priority queue order and append Running Process last
+                for p in priority_queue:
+                    ready.append(priority_queue.popleft())
 
-class Process:
-	def __init__(self, PN, AT, BT, P):
-		# Process Number
-		self.number = PN
-		# Arrival Time
-		self.arrival_time = AT
-		# Burst Time
-		self.burst_time = BT
-		# Priority
-		self.priority = P
-		# Answer Time
-		self.answer_time = 0
-		# Waiting Time
-		self.waiting_time = 0
-			
-	def get_number(self):
-		return self.number
-	def get_arrival_time(self):
-		return self.arrival_time
-	def get_burst_time(self):
-		return self.burst_time
-	def get_priority(self):
-		return self.priority
+                ready.append(running_process)
 
+                # todo: if 2 or more arrives, should not remove element during iteration
+                # Creates new High Priority Queue with new highest priority and assigns Running Process
+                priority_queue = deque()
+                for p in ready:
+                    if p.get_priority() == new_priority:
+                        priority_queue.append(p)
+                        ready.remove(p)
 
-# Reads processes from file and returns them in a list of objects
-def read_processes(file):
-	
-	count = 1
-	processes = []
-	
-	# data format: AT BT P
-	for line in file.readlines():
+                running_process = priority_queue.popleft()
+                context_shift_counter = 0
 
-		line_data = []
-		for x in line.split(" "):
-			line_data.append(int(x))
+            # If there are new processes with same priority as running process, adds them to priority_queue
+            elif sorted_ready[0].get_priority() == running_process.get_priority():
+                for p in ready:
+                    if p.get_priority() == running_process.get_priority():
+                        priority_queue.append(p)
+                        ready.remove(p)
 
-		process = Process(count, line_data[0], line_data[1], line_data[2])
-		processes.append(process)
+        time += 1
 
-		count += 1
+    print("  P   AT   BT   Pri  CT  TAT   WT   RT ")
+    for p in original_requests:
+        print("%3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d" % (
+            p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority(),
+            p.get_completion_time(), p.get_turn_around_time(), p.get_waiting_time(), p.get_response_time()))
 
-	return processes
+    print("\nProcessor Log:\n" + result)
 
-def no_process_to_run():
-	return True
+    # Calculating required averages
+    n = 0
+    total_response_time = 0
+    total_waiting_time = 0
+    total_turn_around_time = 0
 
-	
+    for p in original_requests:
+        total_response_time += p.get_response_time()
+        total_waiting_time += p.get_waiting_time()
+        total_turn_around_time += p.get_turn_around_time()
+        n += 1
 
-#	while True:
-#		sleep(1.5)
-#		print("Time: %d" % T)
-#
-#		# 1. verify if process start
-#		for process in processes:
-#			if process[0] == T:
-#				# todo: sort by priority after appending
-#				ready.append(process)
-#
-#		T = T + 1
-#		# 2. verify if has process to run
-#		if no_process_to_run():
-#			continue
-#
-#		# 3. account context switching
-#		T = T + 1
-#		# 4. take from ready the process with highest priority to run
+    average_response_time = total_response_time / n
+    average_waiting_time = total_waiting_time / n
+    average_turn_around_time = total_turn_around_time / n
+
+    print("\nAverage Response Time: " + str(average_response_time)
+          + "\nAverage Waiting Time: " + str(average_waiting_time)
+          + "\nAverage Turn Around Time: " + str(average_turn_around_time))
 
 
 if __name__ == "__main__":
-	main()
+    main()
