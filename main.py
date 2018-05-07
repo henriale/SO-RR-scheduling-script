@@ -44,24 +44,45 @@ def main():
 	ready = []
 	queue = deque()
 	running_process = None
-	context_counter = 5
+	context_shift = False
 	
 	time = 1
-	while(time<35):
+	while(time<65):
+
+#		print("Starting Loop - CS: " + str(context_shift) + " Time: " + str(time))
+
 		# Checks if Context Shift is occurring
-		if(context_counter == 0):
+		if(context_shift == True):
 			print("C")
-			context_counter += 1
+			context_shift = False
 			time += 1
 			continue
 
-		context_counter += 1
-
 		if(running_process):
+			running_process.execute()
 			print(running_process.get_number())
+
+			if(running_process.get_burst_time() == 0):
+				if(queue):
+					running_process = queue.popleft()
+					context_shift = True
+				else:
+					running_process = None
+
+
+			elif(running_process.get_share_counter() == 3):
+				running_process.reset_share_counter()
+				context_shift = True
+			
+				if(queue):
+					queue.append(running_process)
+					running_process = queue.popleft()
+
+
 		else:
 			print("-")
-	
+
+			
 		# Checks if any requests have become ready
 		for req in requests:
 			if(req.get_arrival_time() == time):
@@ -78,7 +99,7 @@ def main():
 			if(not(running_process)):
 				running_process = sorted_ready[0]
 				ready.remove(running_process)
-				context_counter == 1
+				context_shift == False
 			
 			# Swaps processes if there is a process with higher priority than current process
 			elif(sorted_ready[0].get_priority() < running_process.get_priority()):
@@ -95,7 +116,7 @@ def main():
 						ready.remove(p)
 
 				running_process = queue.popleft()
-				context_counter = 0
+				context_shift = True
 
 			# If there are new processes with same priority as running process, adds them to queue
 			elif(sorted_ready[0].get_priority() == running_process.get_priority()):
@@ -105,15 +126,11 @@ def main():
 						ready.remove(p)
 						
 
-		if(context_counter == 4):
-			context_counter = 0
-			
-			if(queue):
-				queue.append(running_process)
-				running_process = queue.popleft()
+		
+
 		
 #		for p in ready:
-#			print("CC: " + str(context_counter) + " Time: " + str(time) + " Ready: " + str(p.get_number()))
+#			print("CS: " + str(context_shift) + " Time: " + str(time) + " Ready: " + str(p.get_number()))
 
 #		for p in queue:
 #			print(str(time) + " Queue: " + str(p.get_number()))
@@ -137,6 +154,8 @@ class Process:
 		self.answer_time = 0
 		# Waiting Time
 		self.waiting_time = 0
+		# Number of Time Share fractions used by process (changes Context and resets at 3)
+		self.share_counter = 0
 			
 	def get_number(self):
 		return self.number
@@ -146,6 +165,19 @@ class Process:
 		return self.burst_time
 	def get_priority(self):
 		return self.priority
+	def get_answer_time(self):
+		return self.answer_time
+	def get_waiting_time(self):
+		return self.waiting_time
+	def get_share_counter(self):
+		return self.share_counter
+
+	def execute(self):
+		self.burst_time -= 1
+		self.share_counter += 1
+	
+	def reset_share_counter(self):
+		self.share_counter = 0
 
 
 # Reads processes from file and returns them in a list of objects
