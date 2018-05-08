@@ -76,6 +76,9 @@ class Process:
     def reset_quantum_counter(self):
         self.quantum_counter = 0
 
+    def is_done(self):
+        return self.get_remaining_burst() <= 0
+
     # calculates requested data
     def finish(self, time):
         self.completion_time = time + 1

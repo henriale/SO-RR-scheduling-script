@@ -10,7 +10,8 @@ class Scheduler:
         self.time = 1
 
         # start
-        [self.time_quantum, self.processes_count, self.context_shift_size, self.processes] = process.Reader('input.txt').read()
+        [self.time_quantum, self.processes_count, self.context_shift_size, self.processes] = process.Reader(
+            'input.txt').read()
 
         # todo: use proper queue instead
         self.INCOME_QUEUE = self.processes
@@ -29,7 +30,7 @@ class Scheduler:
         # Current time
         self.time = 1
         # Resulting String displaying Processes over Time
-        self.result = ""
+        self.log = ""
 
     def clock(self):
         self.time = self.time + 1
@@ -38,51 +39,21 @@ class Scheduler:
         # Will process one time unit as long as unfinished processes exist
         while self.INCOME_QUEUE or self.READY_QUEUE or self.PRIORITY_QUEUE or self.running_process:
             # Checks if any requests have become ready
-            for req in self.INCOME_QUEUE:
-                if not (req.get_arrival_time() == self.time):
-                    continue
 
-                if self.running_process and req.get_priority() == self.running_process.get_priority():
-                    self.PRIORITY_QUEUE.append(req)
-                else:
-                    self.READY_QUEUE.append(req)
-
-                self.INCOME_QUEUE.remove(req)
+            arrivals = self.get_new_arrivals()
+            if arrivals:
+                self.enqueue_processes(arrivals)
 
             # Checks if Context Shift is occurring
-            if self.context_shift_counter < self.context_shift_size:
-                self.result += "C"
-                self.context_shift_counter += 1
-                self.time += 1
+            if self.should_switch_context():
+                self.switch_context()
                 continue
 
             # Handles Running Process
-            if self.running_process:
-                self.running_process.execute(self.time)
-                self.result += str(self.running_process.get_number())
-
-                # Finishes process if it is done
-                if self.running_process.get_remaining_burst() == 0:
-                    self.running_process.finish(self.time)
-                    self.context_shift_counter = 0
-
-                    if self.PRIORITY_QUEUE:
-                        self.running_process = self.PRIORITY_QUEUE.popleft()
-                    else:
-                        self.running_process = None
-
-                # Swaps process if Time Quantum is reached
-                elif self.running_process.get_quantum_counter() == self.time_quantum:
-                    self.running_process.reset_quantum_counter()
-                    self.context_shift_counter = 0
-
-                    if self.PRIORITY_QUEUE:
-                        self.PRIORITY_QUEUE.append(self.running_process)
-                        self.running_process = self.PRIORITY_QUEUE.popleft()
-
-            # Handles idle processor
+            if self.has_process_to_run():
+                self.run_process()
             else:
-                self.result += "-"
+                self.write_log("-")
 
             # Handles Ready Queue and High-Priority Queue
             if self.READY_QUEUE:
@@ -94,7 +65,7 @@ class Scheduler:
                 # (Does not trigger Context Shift accordingly with Moodle Example)
                 if not self.running_process:
                     self.running_process = sorted_ready[0]
-                    self.READY_QUEUE.remove(self.running_process)
+                    self.remove_ready_process(self.running_process)
 
                 # Swaps processes if there is a process with higher priority than current process, resets Context Shift
                 elif sorted_ready[0].get_priority() < self.running_process.get_priority():
@@ -103,17 +74,17 @@ class Scheduler:
                     # Returns Running Process and High Priority Queue to Ready Queue
                     # Will maintain High Priority queue order and append Running Process last
                     for p in self.PRIORITY_QUEUE:
-                        self.READY_QUEUE.append(self.PRIORITY_QUEUE.popleft())
+                        self.enqueue_ready_process(self.PRIORITY_QUEUE.popleft())
 
-                    self.READY_QUEUE.append(self.running_process)
+                    self.enqueue_ready_process(self.running_process)
 
                     # todo: if 2 or more arrives, should not remove element during iteration
                     # Creates new High Priority Queue with new highest priority and assigns Running Process
                     self.PRIORITY_QUEUE = deque()
                     for p in self.READY_QUEUE:
                         if p.get_priority() == new_priority:
-                            self.PRIORITY_QUEUE.append(p)
-                            self.READY_QUEUE.remove(p)
+                            self.enqueue_priority_process(p)
+                            self.remove_ready_process(p)
 
                     self.running_process = self.PRIORITY_QUEUE.popleft()
                     self.context_shift_counter = 0
@@ -122,10 +93,10 @@ class Scheduler:
                 elif sorted_ready[0].get_priority() == self.running_process.get_priority():
                     for p in self.READY_QUEUE:
                         if p.get_priority() == self.running_process.get_priority():
-                            self.PRIORITY_QUEUE.append(p)
-                            self.READY_QUEUE.remove(p)
+                            self.enqueue_priority_process(p)
+                            self.remove_ready_process(p)
 
-            self.time += 1
+            self.clock()
 
         print("  P   AT   BT   Pri  CT  TAT   WT   RT ")
         for p in self.original_requests:
@@ -133,7 +104,7 @@ class Scheduler:
                 p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority(),
                 p.get_completion_time(), p.get_turn_around_time(), p.get_waiting_time(), p.get_response_time()))
 
-        print("\nProcessor Log:\n" + self.result)
+        print("\nProcessor Log:\n" + self.log)
 
         # Calculating required averages
         n = 0
@@ -154,6 +125,82 @@ class Scheduler:
         print("\nAverage Response Time: " + str(average_response_time)
               + "\nAverage Waiting Time: " + str(average_waiting_time)
               + "\nAverage Turn Around Time: " + str(average_turn_around_time))
+
+    def run_process(self):
+        self.running_process.execute(self.time)
+        self.write_log(self.running_process.get_number())
+
+        # Finishes process if it is done
+        if self.running_process.is_done():
+            self.running_process.finish(self.time)
+            self.context_shift_counter = 0
+
+            if self.PRIORITY_QUEUE:
+                self.running_process = self.PRIORITY_QUEUE.popleft()
+            else:
+                self.running_process = None
+
+            return
+
+        # Swaps process if Time Quantum is reached
+        if self.timeslice_has_ended():
+            self.running_process.reset_quantum_counter()
+            self.context_shift_counter = 0
+
+            if self.PRIORITY_QUEUE:
+                self.enqueue_priority_process(self.running_process)
+                self.running_process = self.PRIORITY_QUEUE.popleft()
+
+    def remove_ready_process(self, p):
+        self.READY_QUEUE.remove(p)
+
+    def should_switch_context(self):
+        return self.context_shift_counter < self.context_shift_size
+
+    def has_new_arrivals(self):
+        for req in self.INCOME_QUEUE:
+            if not (req.get_arrival_time() == self.time):
+                return True
+        return False
+
+    def get_new_arrivals(self):
+        arrivals = []
+
+        for process in self.INCOME_QUEUE:
+            if not (process.get_arrival_time() == self.time):
+                continue
+
+            self.INCOME_QUEUE.remove(process)
+            arrivals.append(process)
+
+        return arrivals
+
+    def enqueue_processes(self, arrivals):
+        for process in arrivals:
+            if self.running_process and process.get_priority() == self.running_process.get_priority():
+                self.enqueue_priority_process(process)
+            else:
+                self.enqueue_ready_process(process)
+
+    def enqueue_ready_process(self, process):
+        self.READY_QUEUE.append(process)
+
+    def enqueue_priority_process(self, process):
+        self.PRIORITY_QUEUE.append(process)
+
+    def switch_context(self):
+        self.write_log("C")
+        self.context_shift_counter += 1
+        self.clock()
+
+    def write_log(self, message):
+        self.log += str(message)
+
+    def has_process_to_run(self):
+        return bool(self.running_process)
+
+    def timeslice_has_ended(self):
+        return self.running_process.get_quantum_counter() == self.time_quantum
 
 
 if __name__ == "__main__":
