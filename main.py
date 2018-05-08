@@ -38,8 +38,8 @@ class Scheduler:
     def run(self):
         # Will process one time unit as long as unfinished processes exist
         while self.INCOME_QUEUE or self.READY_QUEUE or self.PRIORITY_QUEUE or self.running_process:
-            # Checks if any requests have become ready
-
+            
+ 			# Checks if any requests have become ready
             arrivals = self.get_new_arrivals()
             if arrivals:
                 self.enqueue_processes(arrivals)
@@ -73,12 +73,11 @@ class Scheduler:
 
                     # Returns Running Process and High Priority Queue to Ready Queue
                     # Will maintain High Priority queue order and append Running Process last
+                    self.enqueue_ready_process(self.running_process)
                     while self.PRIORITY_QUEUE:
                         self.enqueue_ready_process(self.PRIORITY_QUEUE.popleft())
 
-                    self.enqueue_ready_process(self.running_process)
-
-                    # todo: if 2 or more arrive, should not remove element during iteration - DONE!
+     
                     # Creates new High Priority Queue with new highest priority and assigns Running Process
                     self.PRIORITY_QUEUE = deque()
                     READY_COPY = list(self.READY_QUEUE)
@@ -168,7 +167,8 @@ class Scheduler:
     def get_new_arrivals(self):
         arrivals = []
 
-        for process in self.INCOME_QUEUE:
+        COPY_INCOME_QUEUE = list(self.INCOME_QUEUE)
+        for process in COPY_INCOME_QUEUE:
             if not (process.get_arrival_time() == self.time):
                 continue
 
