@@ -99,10 +99,10 @@ class Scheduler:
 
             self.clock()
 
-        print("  P   AT   BT   Pri  CT  TAT   WT   RT ")
+        print("  P   AT   BT   Pri   IO  CT  TAT   WT   RT ")
         for p in self.original_requests:
-            print("%3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d" % (
-                p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority(),
+            print("%3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d" % (
+                p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority(), p.get_io_time(),
                 p.get_completion_time(), p.get_turn_around_time(), p.get_waiting_time(), p.get_response_time()))
 
         print("\nProcessor Log:\n" + self.log)

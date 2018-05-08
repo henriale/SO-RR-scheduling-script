@@ -14,8 +14,13 @@ class Reader:
             for x in line.split(" "):
                 line_data.append(int(x))
 
-            process = Process(number, line_data[0], line_data[1], line_data[2])
-            processes.append(process)
+            if len(line_data) == 3:
+                process = Process(number, line_data[0], line_data[1], line_data[2], 0)
+                processes.append(process)
+
+            elif len(line_data) >= 4:
+                process = Process(number, line_data[0], line_data[1], line_data[2], 4)
+                processes.append(process)
 
         self.file.close()
 
@@ -23,7 +28,7 @@ class Reader:
 
 
 class Process:
-    def __init__(self, number, arrival_time, burst_time, priority):
+    def __init__(self, number, arrival_time, burst_time, priority, io_time):
         self.number = number
         self.arrival_time = arrival_time
         self.burst_time = burst_time
@@ -31,9 +36,11 @@ class Process:
         self.priority = priority
         self.quantum_counter = 0
         self.turn_around_time = 0
-        self.response_time = 0
+        self.response_time = -1
         self.waiting_time = 0
         self.completion_time = 0
+        self.io_time = io_time
+        self.remaining_io = io_time
 
     def get_number(self):
         return self.number
@@ -65,12 +72,19 @@ class Process:
     def get_completion_time(self):
         return self.completion_time
 
+    def get_io_time(self):
+        return self.io_time
+
+    def get_remaining_io(self):
+        return self.remaining_io
+
+
     # Executes Process for one time unit
     def execute(self, time):
         self.remaining_burst -= 1
         self.quantum_counter += 1
 
-        if self.response_time == 0:
+        if self.response_time == -1:
             self.response_time = time - self.arrival_time
 
     def reset_quantum_counter(self):
