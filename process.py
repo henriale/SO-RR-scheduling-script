@@ -81,7 +81,7 @@ class Process:
 
     # calculates requested data
     def finish(self, time):
-        self.completion_time = time + 1
+        self.completion_time = time
         self.turn_around_time = self.completion_time - self.arrival_time
         self.waiting_time = self.turn_around_time - self.burst_time
 

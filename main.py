@@ -73,15 +73,16 @@ class Scheduler:
 
                     # Returns Running Process and High Priority Queue to Ready Queue
                     # Will maintain High Priority queue order and append Running Process last
-                    for p in self.PRIORITY_QUEUE:
+                    while self.PRIORITY_QUEUE:
                         self.enqueue_ready_process(self.PRIORITY_QUEUE.popleft())
 
                     self.enqueue_ready_process(self.running_process)
 
-                    # todo: if 2 or more arrives, should not remove element during iteration
+                    # todo: if 2 or more arrive, should not remove element during iteration - DONE!
                     # Creates new High Priority Queue with new highest priority and assigns Running Process
                     self.PRIORITY_QUEUE = deque()
-                    for p in self.READY_QUEUE:
+                    READY_COPY = list(self.READY_QUEUE)
+                    for p in READY_COPY:
                         if p.get_priority() == new_priority:
                             self.enqueue_priority_process(p)
                             self.remove_ready_process(p)
@@ -91,7 +92,8 @@ class Scheduler:
 
                 # If there are new processes with same priority as running process, adds them to priority_queue
                 elif sorted_ready[0].get_priority() == self.running_process.get_priority():
-                    for p in self.READY_QUEUE:
+                    READY_COPY = list(self.READY_QUEUE)                    
+                    for p in READY_COPY:
                         if p.get_priority() == self.running_process.get_priority():
                             self.enqueue_priority_process(p)
                             self.remove_ready_process(p)
