@@ -1,8 +1,12 @@
+# todo: move scheduler into this module
+from main import Scheduler
+
+
 class Reader:
     def __init__(self, filename):
         self.file = open(filename)
 
-    def read(self):
+    def read_scheduler(self):
         processes_count = int(self.file.readline())
         time_quantum = int(self.file.readline())
         context_cost = 1
@@ -24,7 +28,7 @@ class Reader:
 
         self.file.close()
 
-        return [time_quantum, processes_count, context_cost, processes]
+        return Scheduler(processes, time_quantum)
 
 
 class Process:
@@ -98,18 +102,3 @@ class Process:
         self.completion_time = time
         self.turn_around_time = self.completion_time - self.arrival_time
         self.waiting_time = self.turn_around_time - self.burst_time
-
-
-class Scheduler:
-    def __init__(self, time_quantum):
-        self.time_quantum = time_quantum
-        self.running_time = 0
-        self.running_process = None
-
-    def run(self, process=None):
-        if self.process_has_changed(process):
-            self.running_time = self.running_time + 1
-
-    def process_has_changed(self, process):
-        pass
-

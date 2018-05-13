@@ -3,15 +3,11 @@ import process as proc
 
 
 class Scheduler:
-    def __init__(self):
-        self.INCOME_QUEUE = []
-        self.READY_QUEUE = []
-        self.PRIORITY_QUEUE = deque()
-        self.time = 1
-
-        # start
-        [self.time_quantum, self.processes_count, self.context_shift_size, self.processes] = proc.Reader(
-            'input.txt').read()
+    def __init__(self, processes, timeslice=2, context_shift_size=1):
+        self.time_quantum = timeslice
+        self.context_shift_size = context_shift_size
+        self.processes = processes
+        self.processes_count = len(self.processes)
 
         # todo: use proper queue instead
         self.INCOME_QUEUE = self.processes
@@ -96,15 +92,20 @@ class Scheduler:
                         self.enqueue_priority_process(p)
                         self.remove_ready_process(p)
 
-        print("  P   AT   BT   Pri   IO  CT  TAT   WT   RT ")
-        for p in self.original_requests:
-            print("%3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d" % (
-                p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority(), p.get_io_time(),
-                p.get_completion_time(), p.get_turn_around_time(), p.get_waiting_time(), p.get_response_time()))
+        self.clock()
 
-        print("\nProcessor Log:\n" + self.log)
+    def report(self):
+        average_response_time, average_turn_around_time, average_waiting_time = self.calc_averages()
+        self.print_all_processes()
+        self.print_execution_log()
+        self.print_time_averages(average_response_time, average_turn_around_time, average_waiting_time)
 
-        # Calculating required averages
+    def print_time_averages(self, average_response_time, average_turn_around_time, average_waiting_time):
+        print("Average Response Time: " + str(average_response_time))
+        print("Average Waiting Time: " + str(average_waiting_time))
+        print("Average Turn Around Time: " + str(average_turn_around_time))
+
+    def calc_averages(self):
         n = 0
         total_response_time = 0
         total_waiting_time = 0
@@ -120,9 +121,17 @@ class Scheduler:
         average_waiting_time = total_waiting_time / n
         average_turn_around_time = total_turn_around_time / n
 
-        print("\nAverage Response Time: " + str(average_response_time)
-              + "\nAverage Waiting Time: " + str(average_waiting_time)
-              + "\nAverage Turn Around Time: " + str(average_turn_around_time))
+        return average_response_time, average_turn_around_time, average_waiting_time
+
+    def print_all_processes(self):
+        print("  P   AT   BT   Pri   IO  CT  TAT   WT   RT ")
+        for p in self.original_requests:
+            print("%3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d" % (
+                p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority(), p.get_io_time(),
+                p.get_completion_time(), p.get_turn_around_time(), p.get_waiting_time(), p.get_response_time()))
+
+    def print_execution_log(self):
+        print("\nProcessor Log:\n" + self.log)
 
     def run_process(self):
         self.running_process.execute(self.time)
@@ -203,8 +212,9 @@ class Scheduler:
 
 
 if __name__ == "__main__":
-    scheduler = Scheduler()
+    scheduler = proc.Reader("input.txt").read_scheduler()
 
     while scheduler.has_process_to_run():
         scheduler.run()
-        scheduler.clock()
+
+    scheduler.report()
