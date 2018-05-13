@@ -1,5 +1,5 @@
 from collections import deque
-import process
+import process as proc
 
 
 class Scheduler:
@@ -10,7 +10,7 @@ class Scheduler:
         self.time = 1
 
         # start
-        [self.time_quantum, self.processes_count, self.context_shift_size, self.processes] = process.Reader(
+        [self.time_quantum, self.processes_count, self.context_shift_size, self.processes] = proc.Reader(
             'input.txt').read()
 
         # todo: use proper queue instead
@@ -35,69 +35,66 @@ class Scheduler:
     def clock(self):
         self.time = self.time + 1
 
+    def has_process_to_run(self):
+        return self.INCOME_QUEUE or self.READY_QUEUE or self.PRIORITY_QUEUE or self.running_process
+
     def run(self):
-        # Will process one time unit as long as unfinished processes exist
-        while self.INCOME_QUEUE or self.READY_QUEUE or self.PRIORITY_QUEUE or self.running_process:
-            
- 			# Checks if any requests have become ready
-            arrivals = self.get_new_arrivals()
-            if arrivals:
-                self.enqueue_processes(arrivals)
+        # Checks if any requests have become ready
+        arrivals = self.get_new_arrivals()
+        if arrivals:
+            self.enqueue_processes(arrivals)
 
-            # Checks if Context Shift is occurring
-            if self.should_switch_context():
-                self.switch_context()
-                continue
+        # Checks if Context Shift is occurring
+        if self.should_switch_context():
+            self.switch_context()
+            return
 
-            # Handles Running Process
-            if self.has_process_to_run():
-                self.run_process()
-            else:
-                self.write_log("-")
+        # Handles Running Process
+        if self.has_process_to_run2():
+            self.run_process()
+        else:
+            self.write_log("-")
 
-            # Handles Ready Queue and High-Priority Queue
-            if self.READY_QUEUE:
-                # Creates a copy of the ready list and sorts it by priority (maintains queue order at original Ready list)
-                sorted_ready = list(self.READY_QUEUE)
-                sorted_ready.sort(key=lambda p: p.priority, reverse=False)
+        # Handles Ready Queue and High-Priority Queue
+        if self.READY_QUEUE:
+            # Creates a copy of the ready list and sorts it by priority (maintains queue order at original Ready list)
+            sorted_ready = list(self.READY_QUEUE)
+            sorted_ready.sort(key=lambda p: p.priority, reverse=False)
 
-                # Assigns a process to be run if processor is idle
-                # (Does not trigger Context Shift accordingly with Moodle Example)
-                if not self.running_process:
-                    self.running_process = sorted_ready[0]
-                    self.remove_ready_process(self.running_process)
+            # Assigns a process to be run if processor is idle
+            # (Does not trigger Context Shift accordingly with Moodle Example)
+            if not self.running_process:
+                self.running_process = sorted_ready[0]
+                self.remove_ready_process(self.running_process)
 
-                # Swaps processes if there is a process with higher priority than current process, resets Context Shift
-                elif sorted_ready[0].get_priority() < self.running_process.get_priority():
-                    new_priority = sorted_ready[0].get_priority()
+            # Swaps processes if there is a process with higher priority than current process, resets Context Shift
+            elif sorted_ready[0].get_priority() < self.running_process.get_priority():
+                new_priority = sorted_ready[0].get_priority()
 
-                    # Returns Running Process and High Priority Queue to Ready Queue
-                    # Will maintain High Priority queue order and append Running Process last
-                    self.enqueue_ready_process(self.running_process)
-                    while self.PRIORITY_QUEUE:
-                        self.enqueue_ready_process(self.PRIORITY_QUEUE.popleft())
+                # Returns Running Process and High Priority Queue to Ready Queue
+                # Will maintain High Priority queue order and append Running Process last
+                self.enqueue_ready_process(self.running_process)
+                while self.PRIORITY_QUEUE:
+                    self.enqueue_ready_process(self.PRIORITY_QUEUE.popleft())
 
-     
-                    # Creates new High Priority Queue with new highest priority and assigns Running Process
-                    self.PRIORITY_QUEUE = deque()
-                    READY_COPY = list(self.READY_QUEUE)
-                    for p in READY_COPY:
-                        if p.get_priority() == new_priority:
-                            self.enqueue_priority_process(p)
-                            self.remove_ready_process(p)
+                # Creates new High Priority Queue with new highest priority and assigns Running Process
+                self.PRIORITY_QUEUE = deque()
+                READY_COPY = list(self.READY_QUEUE)
+                for p in READY_COPY:
+                    if p.get_priority() == new_priority:
+                        self.enqueue_priority_process(p)
+                        self.remove_ready_process(p)
 
-                    self.running_process = self.PRIORITY_QUEUE.popleft()
-                    self.context_shift_counter = 0
+                self.running_process = self.PRIORITY_QUEUE.popleft()
+                self.context_shift_counter = 0
 
-                # If there are new processes with same priority as running process, adds them to priority_queue
-                elif sorted_ready[0].get_priority() == self.running_process.get_priority():
-                    READY_COPY = list(self.READY_QUEUE)                    
-                    for p in READY_COPY:
-                        if p.get_priority() == self.running_process.get_priority():
-                            self.enqueue_priority_process(p)
-                            self.remove_ready_process(p)
-
-            self.clock()
+            # If there are new processes with same priority as running process, adds them to priority_queue
+            elif sorted_ready[0].get_priority() == self.running_process.get_priority():
+                READY_COPY = list(self.READY_QUEUE)
+                for p in READY_COPY:
+                    if p.get_priority() == self.running_process.get_priority():
+                        self.enqueue_priority_process(p)
+                        self.remove_ready_process(p)
 
         print("  P   AT   BT   Pri   IO  CT  TAT   WT   RT ")
         for p in self.original_requests:
@@ -198,7 +195,7 @@ class Scheduler:
     def write_log(self, message):
         self.log += str(message)
 
-    def has_process_to_run(self):
+    def has_process_to_run2(self):
         return bool(self.running_process)
 
     def timeslice_has_ended(self):
@@ -206,4 +203,8 @@ class Scheduler:
 
 
 if __name__ == "__main__":
-    Scheduler().run()
+    scheduler = Scheduler()
+
+    while scheduler.has_process_to_run():
+        scheduler.run()
+        scheduler.clock()
