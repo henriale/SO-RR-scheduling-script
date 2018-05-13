@@ -8,8 +8,7 @@ class Reader:
 
     def read_scheduler(self):
         processes_count = int(self.file.readline())
-        time_quantum = int(self.file.readline())
-        context_cost = 1
+        timeslice = int(self.file.readline())
         processes = []
 
         # data format: AT BT P
@@ -28,7 +27,7 @@ class Reader:
 
         self.file.close()
 
-        return Scheduler(processes, time_quantum)
+        return Scheduler(processes, timeslice)
 
 
 class Process:

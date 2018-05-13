@@ -4,7 +4,7 @@ import process as proc
 
 class Scheduler:
     def __init__(self, processes, timeslice=2, context_shift_size=1):
-        self.time_quantum = timeslice
+        self.timeslice = timeslice
         self.context_shift_size = context_shift_size
         self.processes = processes
         self.processes_count = len(self.processes)
@@ -45,8 +45,7 @@ class Scheduler:
             self.switch_context()
             return
 
-        # Handles Running Process
-        if self.has_process_to_run2():
+        if self.should_run_process():
             self.run_process()
         else:
             self.write_log("-")
@@ -98,6 +97,7 @@ class Scheduler:
         average_response_time, average_turn_around_time, average_waiting_time = self.calc_averages()
         self.print_all_processes()
         self.print_execution_log()
+
         self.print_time_averages(average_response_time, average_turn_around_time, average_waiting_time)
 
     def print_time_averages(self, average_response_time, average_turn_around_time, average_waiting_time):
@@ -149,7 +149,6 @@ class Scheduler:
 
             return
 
-        # Swaps process if Time Quantum is reached
         if self.timeslice_has_ended():
             self.running_process.reset_quantum_counter()
             self.context_shift_counter = 0
@@ -204,11 +203,11 @@ class Scheduler:
     def write_log(self, message):
         self.log += str(message)
 
-    def has_process_to_run2(self):
+    def should_run_process(self):
         return bool(self.running_process)
 
     def timeslice_has_ended(self):
-        return self.running_process.get_quantum_counter() == self.time_quantum
+        return self.running_process.get_quantum_counter() == self.timeslice
 
 
 if __name__ == "__main__":
