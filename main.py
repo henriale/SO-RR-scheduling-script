@@ -21,6 +21,8 @@ class Scheduler:
         # todo: use proper queue instead
         # High Priority Queue (Ready processes with same priority as Running Process)
         self.PRIORITY_QUEUE = deque()
+        # IO Queue: Handles processes that are currently in IO
+        self.IO_QUEUE = []
         # Handles Context Shift (Will bypass Context Shift when Processor is Idle similar to Moodle example)
         self.context_shift_counter = 1
         # Current time
@@ -32,7 +34,7 @@ class Scheduler:
         self.time = self.time + 1
 
     def has_process_to_run(self):
-        return self.INCOME_QUEUE or self.READY_QUEUE or self.PRIORITY_QUEUE or self.running_process
+        return self.INCOME_QUEUE or self.READY_QUEUE or self.PRIORITY_QUEUE or self.running_process or self.IO_QUEUE
 
     def run(self):
         # Checks if any requests have become ready
@@ -47,8 +49,32 @@ class Scheduler:
 
         if self.should_run_process():
             self.run_process()
+            
         else:
             self.write_log("-")
+
+
+        if(self.running_process):
+            if self.running_process.start_io():
+                self.enqueue_io()         
+
+        if (self.IO_QUEUE):
+            for p in self.IO_QUEUE:
+                p.run_io()
+            IO_COPY = list(self.IO_QUEUE)
+            for p in IO_COPY:
+                if p.get_io_counter() == 0:
+                    self.IO_QUEUE.remove(p)
+                    arrivals.append(p)
+            if(arrivals):
+                for p in arrivals:
+                    if(self.should_run_process()):
+                        if (p.get_priority()) == self.running_process.get_priority():
+                            self.PRIORITY_QUEUE.appendleft(p)
+
+                    else:
+                        self.running_process = p
+
 
         # Handles Ready Queue and High-Priority Queue
         if self.READY_QUEUE:
@@ -59,8 +85,12 @@ class Scheduler:
             # Assigns a process to be run if processor is idle
             # (Does not trigger Context Shift accordingly with Moodle Example)
             if not self.running_process:
-                self.running_process = sorted_ready[0]
-                self.remove_ready_process(self.running_process)
+                if(self.PRIORITY_QUEUE):
+                    self.running_process = self.PRIORITY_QUEUE.popleft()
+
+                elif(sorted_ready):
+                    self.running_process = sorted_ready[0]
+                    self.remove_ready_process(self.running_process)
 
             # Swaps processes if there is a process with higher priority than current process, resets Context Shift
             elif sorted_ready[0].get_priority() < self.running_process.get_priority():
@@ -124,11 +154,11 @@ class Scheduler:
         return average_response_time, average_turn_around_time, average_waiting_time
 
     def print_all_processes(self):
-        print("  P   AT   BT   Pri   IO  CT  TAT   WT   RT ")
+        print("  P   AT   BT   Pri  CT  TAT   WT   RT   IO")
         for p in self.original_requests:
-            print("%3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d" % (
-                p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority(), p.get_io_time(),
-                p.get_completion_time(), p.get_turn_around_time(), p.get_waiting_time(), p.get_response_time()))
+            print("%3d  %3d  %3d  %3d  %3d  %3d  %3d  %3d  %3s" % (
+                p.get_number(), p.get_arrival_time(), p.get_burst_time(), p.get_priority(), p.get_completion_time(),
+                p.get_turn_around_time(), p.get_waiting_time(), p.get_response_time(), str(p.get_io_times())))
 
     def print_execution_log(self):
         print("\nProcessor Log:\n" + self.log)
@@ -194,6 +224,14 @@ class Scheduler:
 
     def enqueue_priority_process(self, process):
         self.PRIORITY_QUEUE.append(process)
+
+    def enqueue_io(self):
+        self.IO_QUEUE.append(self.running_process)
+        if(self.PRIORITY_QUEUE):
+            self.running_process = self.PRIORITY_QUEUE.popleft()
+        else:
+            self.running_process = None
+        self.context_shift_counter = 0
 
     def switch_context(self):
         self.write_log("C")

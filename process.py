@@ -18,11 +18,14 @@ class Reader:
                 line_data.append(int(x))
 
             if len(line_data) == 3:
-                process = Process(number, line_data[0], line_data[1], line_data[2], 0)
+                process = Process(number, line_data[0], line_data[1], line_data[2], [])
                 processes.append(process)
 
             elif len(line_data) >= 4:
-                process = Process(number, line_data[0], line_data[1], line_data[2], 4)
+                io_times = []
+                for i in range(3, len(line_data)):
+                    io_times.append(line_data[i])
+                process = Process(number, line_data[0], line_data[1], line_data[2], io_times)
                 processes.append(process)
 
         self.file.close()
@@ -31,7 +34,7 @@ class Reader:
 
 
 class Process:
-    def __init__(self, number, arrival_time, burst_time, priority, io_time):
+    def __init__(self, number, arrival_time, burst_time, priority, io_times):
         self.number = number
         self.arrival_time = arrival_time
         self.burst_time = burst_time
@@ -42,8 +45,8 @@ class Process:
         self.response_time = -1
         self.waiting_time = 0
         self.completion_time = 0
-        self.io_time = io_time
-        self.remaining_io = io_time
+        self.io_times = io_times
+        self.io_counter = 0
 
     def get_number(self):
         return self.number
@@ -75,11 +78,11 @@ class Process:
     def get_completion_time(self):
         return self.completion_time
 
-    def get_io_time(self):
-        return self.io_time
+    def get_io_times(self):
+        return self.io_times
 
-    def get_remaining_io(self):
-        return self.remaining_io
+    def get_io_counter(self):
+        return self.io_counter
 
 
     # Executes Process for one time unit
@@ -89,6 +92,16 @@ class Process:
 
         if self.response_time == -1:
             self.response_time = time - self.arrival_time
+
+    def start_io(self):
+        if (self.burst_time - self.remaining_burst) in self.io_times:
+            self.io_counter = 4
+            self.io_times.remove(self.burst_time - self.remaining_burst)
+            return True
+        return False
+
+    def run_io(self):
+        self.io_counter -= 1
 
     def reset_quantum_counter(self):
         self.quantum_counter = 0
