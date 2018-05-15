@@ -1,3 +1,28 @@
+# Pontifícia Universidade Católica do Rio Grande do Sul
+# Escola Politécnica
+# Disciplina de Sistemas Operacionais
+# Prof. Avelino Zorzo
+# ----------------------------
+# Gabriel Ferreira Kurtz (Engenharia de Software)
+# gabriel.kurtz@acad.pucrs.br
+
+# Alexandre Araujo (Ciência da Computação)
+# alexandre.henrique@acad.pucrs.br
+
+# Maio/2018
+# ----------------------------
+# Simulador de Escalonamento de Software
+
+# Este programa foi desenvolvido para a disciplina de SisOp da FACIN
+# (Escola Politécnica/PUCRS). Trata-se de um um script para simular
+# uma fila no modelo Round Robin com prioridades fixas.
+
+# O programa lê um imput de dados representando processos e deve
+# simular seu processo de CPU e I/O, imprimindo ao final uma String
+# que demonstre os processos ao longo do tempo, bem como os dados de
+# Tempo de Resposta e Tempo de Espera médios.
+
+
 from collections import deque
 import process as proc
 
@@ -69,11 +94,12 @@ class Scheduler:
             if(arrivals):
                 for p in arrivals:
                     if(self.should_run_process()):
-                        if (p.get_priority()) == self.running_process.get_priority():
+                        if p.get_priority() == self.running_process.get_priority():
                             self.PRIORITY_QUEUE.appendleft(p)
-
+                        else:
+                            self.READY_QUEUE.append(p)
                     else:
-                        self.running_process = p
+                        self.READY_QUEUE.append(p)
 
 
         # Handles Ready Queue and High-Priority Queue
